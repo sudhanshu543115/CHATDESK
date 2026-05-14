@@ -1,22 +1,39 @@
 import React from 'react';
-import { useSelector } from 'react-redux';
-import { Search, MoreHorizontal, Phone, Video, Info, UserPlus } from 'lucide-react';
+import { useSelector, useDispatch } from 'react-redux';
+import { Search, MoreHorizontal, Phone, Video, Info, Sun, Moon } from 'lucide-react';
 import Avatar from '@components/common/Avatar';
+import { setTheme } from '@store/slices/uiSlice';
 
 const Header = () => {
+  const dispatch = useDispatch();
   const { activeChat } = useSelector((state) => state.chat);
   const { user } = useSelector((state) => state.auth);
+  const { theme } = useSelector((state) => state.ui);
+
+  const toggleTheme = () => {
+    dispatch(setTheme(theme === 'dark' ? 'light' : 'dark'));
+  };
 
   if (!activeChat) {
     return (
       <header className="h-20 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl px-8 flex items-center justify-between z-10">
         <div className="flex-1" />
-        <div className="flex items-center gap-4">
-          <div className="text-right hidden sm:block">
-            <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{user?.username}</p>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Administrator</p>
+        <div className="flex items-center gap-6">
+          {/* Theme Toggle */}
+          <button 
+            onClick={toggleTheme}
+            className="p-2.5 bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:text-primary-500 rounded-xl transition-all border border-transparent hover:border-primary-500/20"
+          >
+            {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          </button>
+          
+          <div className="flex items-center gap-4">
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{user?.username}</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Administrator</p>
+            </div>
+            <Avatar src={user?.avatar} alt={user?.username} size="md" status={user?.status} className="border-2 border-primary-100 dark:border-slate-800" />
           </div>
-          <Avatar src={user?.avatar} alt={user?.username} size="md" status={user?.status} className="border-2 border-primary-100 dark:border-slate-800" />
         </div>
       </header>
     );
@@ -61,9 +78,17 @@ const Header = () => {
       {/* Actions */}
       <div className="flex items-center gap-2">
         <div className="flex items-center bg-slate-50 dark:bg-slate-900 rounded-2xl p-1.5 mr-2">
+          {/* Theme Toggle */}
+          <button 
+            onClick={toggleTheme}
+            className="p-2 text-slate-500 hover:text-primary-500 hover:bg-white dark:hover:bg-slate-800 rounded-xl transition-all mr-1"
+          >
+            {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          </button>
+
           {!isGroup && (
             <>
-              <button className="p-2.5 text-slate-500 hover:text-primary-500 hover:bg-white dark:hover:bg-slate-800 rounded-xl transition-all group">
+              <button className="p-2.5 text-slate-500 hover:text-primary-500 hover:bg-white dark:hover:bg-slate-800 rounded-xl transition-all group border-l border-slate-200 dark:border-slate-700 ml-1">
                 <Phone className="h-5 w-5 group-hover:scale-110" />
               </button>
               <button className="p-2.5 text-slate-500 hover:text-primary-500 hover:bg-white dark:hover:bg-slate-800 rounded-xl transition-all group">
