@@ -79,6 +79,7 @@ export const MOCK_MESSAGES = [
   },
 ];
 
+
 export const MOCK_TASKS = [
   { id: 't1', title: 'Complete UI Redesign', status: 'In Progress', priority: 'High', assignee: 'Jane Smith' },
   { id: 't2', title: 'Fix Auth Bugs', status: 'Pending', priority: 'Critical', assignee: 'Alex Wilson' },
