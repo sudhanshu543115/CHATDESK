@@ -4,7 +4,8 @@ const uiSlice = createSlice({
   name: 'ui',
   initialState: {
     theme: localStorage.getItem('theme') || 'dark',
-    sidebarCollapsed: false,
+    sidebarCollapsed: true,
+    activeView: 'chats',
     modalOpen: null,
     searchQuery: '',
     searchFilters: {
@@ -26,6 +27,9 @@ const uiSlice = createSlice({
     },
     toggleSidebar: (state) => {
       state.sidebarCollapsed = !state.sidebarCollapsed;
+    },
+    setActiveView: (state, action) => {
+      state.activeView = action.payload;
     },
     setSidebarCollapsed: (state, action) => {
       state.sidebarCollapsed = action.payload;
@@ -51,6 +55,7 @@ const uiSlice = createSlice({
 export const {
   setTheme,
   toggleSidebar,
+  setActiveView,
   setSidebarCollapsed,
   openModal,
   closeModal,
