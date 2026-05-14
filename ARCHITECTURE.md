@@ -459,3 +459,15 @@ Files → CDN or object storage (S3)
    - Run CI/CD pipeline
    - Deploy to staging
    - Test and deploy to production
+
+
+
+
+
+
+
+
+
+
+   admin@chatdesk.com
+   password@123
