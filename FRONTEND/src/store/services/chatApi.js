@@ -3,7 +3,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 export const chatApi = createApi({
   reducerPath: 'chatApi',
   baseQuery: fetchBaseQuery({
-    baseUrl: 'http://127.0.0.1:8001/graphql',
+    baseUrl: import.meta.env.VITE_GRAPHQL_ENDPOINT || 'http://127.0.0.1:8001/graphql',
     prepareHeaders: (headers, { getState }) => {
       const token = getState().auth.token;
       if (token) {
