@@ -1,14 +1,17 @@
 import React, { useEffect } from 'react';
-import { Provider, useSelector } from 'react-redux';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { store } from '@store/index';
+import { useSelector } from 'react-redux';
 import MainLayout from '@components/layout/MainLayout';
 import LoginForm from '@components/auth/LoginForm';
 import RegisterForm from '@components/auth/RegisterForm';
+import ChatWindow from '@components/chat/ChatWindow';
+import TasksPage from '@components/tasks/TasksPage';
+import { initWebSocket } from '@services/websocket';
 
+// Theme initializer component
 const ThemeInitializer = ({ children }) => {
   const { theme } = useSelector((state) => state.ui);
-
+  
   useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -16,25 +19,56 @@ const ThemeInitializer = ({ children }) => {
       document.documentElement.classList.remove('dark');
     }
   }, [theme]);
+  
+  return children;
+};
+
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated } = useSelector((state) => state.auth);
+  return isAuthenticated ? children : <Navigate to="/login" />;
+};
+
+// Sub-component to hold the WebSocket listener under the Redux context
+const WebSocketManager = ({ children }) => {
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
+
+  useEffect(() => {
+    if (isAuthenticated && user?.id) {
+      initWebSocket(user.id);
+    }
+  }, [isAuthenticated, user?.id]);
 
   return children;
 };
 
-function App() {
+const App = () => {
   return (
-    <Provider store={store}>
-      <ThemeInitializer>
-        <BrowserRouter>
+    <ThemeInitializer>
+      <BrowserRouter>
+        <WebSocketManager>
           <Routes>
             <Route path="/login" element={<LoginForm />} />
             <Route path="/register" element={<RegisterForm />} />
-            <Route path="/chat" element={<MainLayout />} />
-            <Route path="/" element={<Navigate to="/login" replace />} />
+            
+            <Route
+              path="/*"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Routes>
+                      <Route path="/chat" element={<ChatWindow />} />
+                      <Route path="/tasks" element={<TasksPage />} />
+                      <Route path="/" element={<Navigate to="/chat" />} />
+                    </Routes>
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
           </Routes>
-        </BrowserRouter>
-      </ThemeInitializer>
-    </Provider>
+        </WebSocketManager>
+      </BrowserRouter>
+    </ThemeInitializer>
   );
-}
+};
 
 export default App;

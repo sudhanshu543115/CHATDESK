@@ -5,7 +5,7 @@ import userReducer from './slices/userSlice';
 import notificationReducer from './slices/notificationSlice';
 import workspaceReducer from './slices/workspaceSlice';
 import uiReducer from './slices/uiSlice';
-import websocketMiddleware from './middleware/websocketMiddleware';
+import { chatApi } from './services/chatApi';
 
 export const store = configureStore({
   reducer: {
@@ -15,9 +15,10 @@ export const store = configureStore({
     notification: notificationReducer,
     workspace: workspaceReducer,
     ui: uiReducer,
+    [chatApi.reducerPath]: chatApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(websocketMiddleware),
+    getDefaultMiddleware().concat(chatApi.middleware),
   devTools: process.env.NODE_ENV !== 'production',
 });
 

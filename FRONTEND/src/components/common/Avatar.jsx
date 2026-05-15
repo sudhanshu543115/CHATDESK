@@ -9,6 +9,8 @@ const Avatar = ({
   onClick,
 }) => {
   const sizes = {
+    xxs: 'w-5 h-5',
+    xs: 'w-6 h-6',
     sm: 'w-8 h-8',
     md: 'w-10 h-10',
     lg: 'w-12 h-12',
