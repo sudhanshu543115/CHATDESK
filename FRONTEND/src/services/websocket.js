@@ -79,7 +79,8 @@ export const initWebSocket = (userId) => {
 
         console.log('🔊 Sound Check:', { isFromMe, isInActiveChat, senderId: newMessage.senderId, currentUserId });
 
-        if (!isFromMe && !isInActiveChat) {
+        // FIX: Remove !isInActiveChat so sound plays even if the chat is open!
+        if (!isFromMe) {
           console.log('🎵 Attempting to play notification sound...');
           const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3');
           audio.volume = 0.4;
@@ -87,21 +88,23 @@ export const initWebSocket = (userId) => {
             .then(() => console.log('✅ Sound played successfully'))
             .catch((err) => {
               console.warn('❌ Sound failed (Autoplay policy?):', err.message);
-              console.log('💡 Tip: You must interact with the page (click anywhere) before sounds can play.');
             });
 
-          if (Notification.permission === 'granted') {
+          // Only show visual notification if NOT in active chat
+          if (!isInActiveChat && Notification.permission === 'granted') {
             new Notification(`New message from ${newMessage.sender.username}`, {
               body: newMessage.content,
               icon: '/logo.png'
             });
           }
 
-          const chatId = newMessage.channelId || newMessage.groupId || newMessage.senderId;
-          const currentCount = state.chat.unreadCounts[chatId] || 0;
-          store.dispatch(setUnreadCount({ chatId, count: currentCount + 1 }));
+          if (!isInActiveChat) {
+            const chatId = newMessage.channelId || newMessage.groupId || newMessage.senderId;
+            const currentCount = state.chat.unreadCounts[chatId] || 0;
+            store.dispatch(setUnreadCount({ chatId, count: currentCount + 1 }));
+          }
         } else {
-          console.log('🔇 Sound suppressed (Message is from self or in active chat)');
+          console.log('🔇 Sound suppressed (Message is from yourself)');
         }
       } else if (['TASK_CREATED', 'TASK_UPDATED', 'TASK_DELETED'].includes(message.type)) {
         console.log(`📋 Mission Update Received: ${message.type}`);
