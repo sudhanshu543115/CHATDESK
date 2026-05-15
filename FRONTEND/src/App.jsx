@@ -6,6 +6,7 @@ import LoginForm from '@components/auth/LoginForm';
 import RegisterForm from '@components/auth/RegisterForm';
 import ChatWindow from '@components/chat/ChatWindow';
 import TasksPage from '@components/tasks/TasksPage';
+import ReportForm from '@components/reports/ReportForm';
 import { initWebSocket } from '@services/websocket';
 
 // Theme initializer component
@@ -58,6 +59,7 @@ const App = () => {
                     <Routes>
                       <Route path="/chat" element={<ChatWindow />} />
                       <Route path="/tasks" element={<TasksPage />} />
+                      <Route path="/reports" element={<ReportForm />} />
                       <Route path="/" element={<Navigate to="/chat" />} />
                     </Routes>
                   </MainLayout>

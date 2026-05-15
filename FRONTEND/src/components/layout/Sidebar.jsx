@@ -10,7 +10,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Bell,
-  CheckCircle2
+  CheckCircle2,
+  FileText
 } from 'lucide-react';
 import Avatar from '@components/common/Avatar';
 import { logout } from '@store/slices/authSlice';
@@ -27,6 +28,7 @@ const Sidebar = ({ collapsed }) => {
     { icon: Users, label: 'Groups', id: 'groups' },
     { icon: Hash, label: 'Channels', id: 'channels' },
     { icon: CheckCircle2, label: 'Tasks', id: 'tasks' },
+    { icon: FileText, label: 'Reports', id: 'reports' },
   ];
 
   return (

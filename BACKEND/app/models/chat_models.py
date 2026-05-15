@@ -67,3 +67,9 @@ class Message(Base):
     channel_id = Column(Integer, ForeignKey("channels.id"), nullable=True)
     group_id = Column(Integer, ForeignKey("groups.id"), nullable=True)
     recipient_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    
+    # Media Attachments
+    media_url = Column(String, nullable=True)
+    media_type = Column(String, nullable=True)
+    file_name = Column(String, nullable=True)
+

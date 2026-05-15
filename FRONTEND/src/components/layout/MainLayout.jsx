@@ -6,6 +6,7 @@ import Header from './Header';
 import ChatListPanel from './ChatListPanel';
 import ChatWindow from '@components/chat/ChatWindow';
 import TasksPage from '@components/tasks/TasksPage';
+import ReportForm from '@components/reports/ReportForm';
 
 const MainLayout = () => {
   const { isAuthenticated } = useSelector((state) => state.auth);
@@ -24,6 +25,9 @@ const MainLayout = () => {
       {activeView === 'tasks' ? (
         /* Tasks View - Full Width */
         <TasksPage />
+      ) : activeView === 'reports' ? (
+        /* Reports View - Full Width */
+        <ReportForm />
       ) : (
         <>
           {/* Chat List Panel */}

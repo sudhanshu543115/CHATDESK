@@ -62,7 +62,10 @@ class Message:
     channelId: Optional[int] = None
     groupId: Optional[int] = None
     recipientId: Optional[int] = None
-    
+    mediaUrl: Optional[str] = None
+    mediaType: Optional[str] = None
+    fileName: Optional[str] = None
+
     @strawberry.field
     def sender(self) -> Optional[User]:
         db = SessionLocal()
@@ -416,7 +419,7 @@ class Mutation:
             db.close()
 
     @strawberry.mutation
-    async def send_message(self, content: str, senderId: int, info: Info, channelId: Optional[int] = None, groupId: Optional[int] = None, recipientId: Optional[int] = None) -> Message:
+    async def send_message(self, content: str, senderId: int, info: Info, channelId: Optional[int] = None, groupId: Optional[int] = None, recipientId: Optional[int] = None, mediaUrl: Optional[str] = None, mediaType: Optional[str] = None, fileName: Optional[str] = None) -> Message:
         db = SessionLocal()
         try:
             message_time = datetime.utcnow()
@@ -426,7 +429,10 @@ class Mutation:
                 channel_id=channelId,
                 group_id=groupId,
                 recipient_id=recipientId,
-                timestamp=message_time
+                timestamp=message_time,
+                media_url=mediaUrl,
+                media_type=mediaType,
+                file_name=fileName,
             )
             db.add(message)
             sender = db.query(UserModel).filter(UserModel.id == senderId).first()
@@ -444,14 +450,14 @@ class Mutation:
                         "channelId": channelId,
                         "groupId": groupId,
                         "recipientId": recipientId,
-                        "sender": {
-                            "id": senderId,
-                            "username": sender_name
-                        }
+                        "mediaUrl": mediaUrl,
+                        "mediaType": mediaType,
+                        "fileName": fileName,
+                        "sender": {"id": senderId, "username": sender_name}
                     }
                 }
                 asyncio.create_task(manager.broadcast(payload))
-            return Message(id=message.id, content=content, timestamp=message_time.isoformat(), senderId=senderId, channelId=channelId, groupId=groupId, recipientId=recipientId)
+            return Message(id=message.id, content=content, timestamp=message_time.isoformat(), senderId=senderId, channelId=channelId, groupId=groupId, recipientId=recipientId, mediaUrl=mediaUrl, mediaType=mediaType, fileName=fileName)
         finally:
             db.close()
 

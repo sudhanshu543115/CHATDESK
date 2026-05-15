@@ -1,20 +1,28 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from strawberry.fastapi import GraphQLRouter
 from app.graphql.schema import schema
 from typing import List, Dict, Set
 import json
 import asyncio
+import os
+import uuid
+import shutil
 from app.config.db import engine, Base
-import app.models.chat_models # Ensure models are loaded
-import app.models.user_model # Ensure user model is loaded
+import app.models.chat_models
+import app.models.user_model
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
+# Ensure uploads directory exists
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 app = FastAPI(title="ChatDesk API")
 
-# CORS Configuration - Explicitly allow all for WebSocket handshakes
+# CORS Configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -22,6 +30,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Serve uploaded files as static
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # WebSocket Connection Manager
 class ConnectionManager:
@@ -51,17 +62,13 @@ class ConnectionManager:
     async def broadcast(self, message: dict):
         data = json.dumps(message)
         dead_connections = []
-        
-        # Snapshot of connections to avoid modification errors
         current_users = list(self.active_connections.items())
-        
         for user_id, connections in current_users:
             for websocket in list(connections):
                 try:
                     await websocket.send_text(data)
                 except Exception:
                     dead_connections.append((user_id, websocket))
-        
         for user_id, websocket in dead_connections:
             self.disconnect(websocket, user_id)
 
@@ -73,12 +80,67 @@ async def get_context():
 graphql_app = GraphQLRouter(schema, context_getter=get_context)
 app.include_router(graphql_app, prefix="/graphql")
 
+
+def get_media_type(content_type: str) -> str:
+    """Detect media type from MIME type."""
+    if content_type.startswith("image/"):
+        return "image"
+    elif content_type.startswith("video/"):
+        return "video"
+    elif content_type.startswith("audio/"):
+        return "audio"
+    else:
+        return "file"
+
+
+# ─── Cloudinary Configuration ─────────────────────────────────────────────────
+import cloudinary
+import cloudinary.uploader
+
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+)
+
+
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    """Upload a media file to Cloudinary and return its URL."""
+    try:
+        media_type = get_media_type(file.content_type or "")
+
+        # Cloudinary resource_type: image, video (also handles audio), or raw (for files)
+        if media_type in ("image",):
+            resource_type = "image"
+        elif media_type in ("video", "audio"):
+            resource_type = "video"
+        else:
+            resource_type = "raw"
+
+        result = cloudinary.uploader.upload(
+            file.file,
+            resource_type=resource_type,
+            folder="chatdesk",
+        )
+
+        return {
+            "url": result["secure_url"],
+            "media_type": media_type,
+            "file_name": file.filename,
+            "content_type": file.content_type,
+        }
+    except Exception as e:
+        print(f"Upload error: {e}")
+        return {"error": str(e)}
+
+
+
 @app.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: str):
     success = await manager.connect(websocket, user_id)
     if not success:
         return
-
     try:
         while True:
             try:
@@ -92,6 +154,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
     except Exception as e:
         print(f"DEBUG: WS Loop error for User {user_id}: {e}")
         manager.disconnect(websocket, user_id)
+
 
 @app.get("/")
 async def root():

@@ -1,10 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useSendMessageMutation } from '@store/services/chatApi';
-import { Send, Paperclip, Smile, X, Loader2 } from 'lucide-react';
+import { Send, Paperclip, Smile, X, Loader2, Image, FileAudio, FileVideo, File } from 'lucide-react';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001';
+
+const getFileIcon = (type) => {
+  if (type === 'image') return <Image className="h-3.5 w-3.5 text-blue-400" />;
+  if (type === 'video') return <FileVideo className="h-3.5 w-3.5 text-purple-400" />;
+  if (type === 'audio') return <FileAudio className="h-3.5 w-3.5 text-green-400" />;
+  return <File className="h-3.5 w-3.5 text-slate-400" />;
+};
 
 const MessageInput = ({ activeChat, currentUser }) => {
   const [message, setMessage] = useState('');
-  const [attachments, setAttachments] = useState([]);
+  const [attachments, setAttachments] = useState([]); // [{file, preview, mediaType}]
+  const [uploading, setUploading] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [sendMessage] = useSendMessageMutation();
   const fileInputRef = useRef(null);
@@ -14,32 +24,81 @@ const MessageInput = ({ activeChat, currentUser }) => {
     textareaRef.current?.focus();
   }, [activeChat?.id]);
 
+  // Clean up preview URLs on unmount
+  useEffect(() => {
+    return () => attachments.forEach(a => { if (a.preview) URL.revokeObjectURL(a.preview); });
+  }, [attachments]);
+
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files);
+    const newAttachments = files.map(file => ({
+      file,
+      preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
+      mediaType: file.type.startsWith('image/') ? 'image'
+               : file.type.startsWith('video/') ? 'video'
+               : file.type.startsWith('audio/') ? 'audio' : 'file',
+      name: file.name,
+    }));
+    setAttachments(prev => [...prev, ...newAttachments]);
+    e.target.value = '';
+  };
+
+  const removeAttachment = (index) => {
+    setAttachments(prev => {
+      if (prev[index]?.preview) URL.revokeObjectURL(prev[index].preview);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const uploadFile = async (attachment) => {
+    const formData = new FormData();
+    formData.append('file', attachment.file);
+    const res = await fetch(`${API_BASE}/upload`, { method: 'POST', body: formData });
+    return res.json();
+  };
+
   const handleSend = async () => {
     if (!message.trim() && attachments.length === 0) return;
 
     const content = message;
-    const currentAttachments = attachments;
-
+    const currentAttachments = [...attachments];
     setMessage('');
     setAttachments([]);
     setShowEmojiPicker(false);
     textareaRef.current?.focus();
 
     try {
-      const messageData = {
-        content: content,
+      const baseData = {
         senderId: parseInt(currentUser?.id),
         channelId: activeChat?.workspaceId && !activeChat.username ? parseInt(activeChat.id) : null,
         recipientId: activeChat?.username ? parseInt(activeChat.id) : null,
         groupId: activeChat?.memberCount !== undefined ? parseInt(activeChat.id) : null,
       };
 
-      await sendMessage(messageData).unwrap();
+      if (currentAttachments.length > 0) {
+        setUploading(true);
+        // Upload each file and send a message for it
+        for (const attachment of currentAttachments) {
+          const uploadResult = await uploadFile(attachment);
+          if (uploadResult.url) {
+            await sendMessage({
+              ...baseData,
+              content: content || attachment.name,
+              mediaUrl: uploadResult.url.startsWith('http') ? uploadResult.url : `${API_BASE}${uploadResult.url}`,
+              mediaType: uploadResult.media_type,
+              fileName: uploadResult.file_name,
+            }).unwrap();
+          }
+        }
+        setUploading(false);
+      } else {
+        await sendMessage({ ...baseData, content }).unwrap();
+      }
     } catch (err) {
-      console.error('Failed to send message:', err);
+      console.error('Failed to send:', err);
+      setUploading(false);
       setMessage(content);
       setAttachments(currentAttachments);
-      alert('Failed to send message. Please try again.');
     }
   };
 
@@ -51,39 +110,59 @@ const MessageInput = ({ activeChat, currentUser }) => {
   };
 
   const emojis = ['😀', '😂', '😍', '🥳', '😎', '🤔', '👍', '👎', '❤️', '🔥', '✨', '🎉'];
-
   const placeholderName = activeChat?.username || activeChat?.name || '';
 
   return (
     <div className="p-4 border-t border-slate-200 dark:border-slate-900 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl transition-colors duration-300">
+      {/* Attachment Previews */}
       {attachments.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-3">
+        <div className="flex flex-wrap gap-2 mb-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
           {attachments.map((attachment, index) => (
-            <div
-              key={index}
-              className="flex items-center gap-2 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-xl text-[10px] font-bold text-slate-500 dark:text-slate-400"
-            >
-              <span className="truncate max-w-[150px] uppercase">{attachment.name}</span>
-              <button
-                onClick={() => setAttachments(attachments.filter((_, i) => i !== index))}
-                className="text-slate-400 hover:text-red-500 transition-colors"
-              >
-                <X className="h-3 w-3" />
-              </button>
+            <div key={index} className="relative group">
+              {attachment.preview ? (
+                <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
+                  <img src={attachment.preview} alt={attachment.name} className="w-full h-full object-cover" />
+                  <button
+                    onClick={() => removeAttachment(index)}
+                    className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-[10px] font-bold text-slate-500 dark:text-slate-400 max-w-[160px]">
+                  {getFileIcon(attachment.mediaType)}
+                  <span className="truncate">{attachment.name}</span>
+                  <button onClick={() => removeAttachment(index)} className="text-slate-400 hover:text-red-500 transition-colors ml-1">
+                    <X className="h-3 w-3 flex-shrink-0" />
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
       )}
 
       <div className="flex items-end gap-3">
+        {/* Attach Button */}
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="p-3 text-slate-400 dark:text-slate-500 hover:text-primary-500 hover:bg-primary-500/10 rounded-xl transition-all"
+          disabled={uploading}
+          className="p-3 text-slate-400 dark:text-slate-500 hover:text-primary-500 hover:bg-primary-500/10 rounded-xl transition-all disabled:opacity-50"
+          title="Attach image, video, audio or file"
         >
-          <Paperclip className="h-5 w-5" />
+          {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Paperclip className="h-5 w-5" />}
         </button>
-        <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(e) => setAttachments([...attachments, ...Array.from(e.target.files)])} />
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
+          className="hidden"
+          onChange={handleFileSelect}
+        />
 
+        {/* Text Input */}
         <div className="flex-1 relative group">
           <textarea
             ref={textareaRef}
@@ -97,6 +176,7 @@ const MessageInput = ({ activeChat, currentUser }) => {
           />
         </div>
 
+        {/* Emoji */}
         <div className="relative">
           <button
             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
@@ -119,9 +199,10 @@ const MessageInput = ({ activeChat, currentUser }) => {
           )}
         </div>
 
+        {/* Send */}
         <button
           onClick={handleSend}
-          disabled={!message.trim() && attachments.length === 0}
+          disabled={(!message.trim() && attachments.length === 0) || uploading}
           className="p-3.5 bg-primary-600 text-white rounded-xl hover:bg-primary-500 shadow-lg shadow-primary-500/20 disabled:opacity-30 disabled:grayscale transition-all active:scale-95 flex-shrink-0"
         >
           <Send className="h-5 w-5" />

@@ -282,6 +282,9 @@ export const chatApi = createApi({
                 content
                 timestamp
                 senderId
+                mediaUrl
+                mediaType
+                fileName
                 sender {
                   id
                   username
@@ -301,10 +304,13 @@ export const chatApi = createApi({
         method: 'POST',
         body: {
           query: `
-            mutation SendMessage($content: String!, $senderId: Int!, $channelId: Int, $groupId: Int, $recipientId: Int) {
-              sendMessage(content: $content, senderId: $senderId, channelId: $channelId, groupId: $groupId, recipientId: $recipientId) {
+            mutation SendMessage($content: String!, $senderId: Int!, $channelId: Int, $groupId: Int, $recipientId: Int, $mediaUrl: String, $mediaType: String, $fileName: String) {
+              sendMessage(content: $content, senderId: $senderId, channelId: $channelId, groupId: $groupId, recipientId: $recipientId, mediaUrl: $mediaUrl, mediaType: $mediaType, fileName: $fileName) {
                 id
                 content
+                mediaUrl
+                mediaType
+                fileName
               }
             }
           `,
