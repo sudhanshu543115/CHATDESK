@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+
 import { useSelector } from 'react-redux';
 import MainLayout from '@components/layout/MainLayout';
 import LoginForm from '@components/auth/LoginForm';
@@ -45,7 +46,7 @@ const WebSocketManager = ({ children }) => {
 const App = () => {
   return (
     <ThemeInitializer>
-      <BrowserRouter>
+      <Router>
         <WebSocketManager>
           <Routes>
             <Route path="/login" element={<LoginForm />} />
@@ -68,8 +69,9 @@ const App = () => {
             />
           </Routes>
         </WebSocketManager>
-      </BrowserRouter>
+      </Router>
     </ThemeInitializer>
+
   );
 };
 

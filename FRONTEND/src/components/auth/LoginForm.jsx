@@ -131,20 +131,10 @@ const LoginForm = () => {
           </Button>
         </form>
 
-        <div className="mt-8 text-center">
-          <p className="text-slate-400 text-sm font-medium">
-            New to ChatDesk?{' '}
-            <button
-              onClick={() => navigate('/register')}
-              className="text-primary-500 hover:text-primary-400 font-black transition-colors"
-            >
-              CREATE ACCOUNT
-            </button>
-          </p>
-        </div>
       </div>
     </div>
   );
 };
+
 
 export default LoginForm;
