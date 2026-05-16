@@ -107,13 +107,21 @@ export const initWebSocket = (userId) => {
               console.warn('❌ Sound failed (Autoplay policy?):', err.message);
             });
 
+          // Smart body for media
+          let bodyText = newMessage.content;
+          if (newMessage.mediaUrl && !newMessage.content) {
+            const type = newMessage.mediaType || 'file';
+            bodyText = type === 'image' ? 'Sent a photo 📸' : type === 'video' ? 'Sent a video 🎥' : 'Sent an attachment 📎';
+          }
+
           // Only show visual notification if NOT in active chat
           if (!isInActiveChat && Notification.permission === 'granted') {
             new Notification(`New message from ${newMessage.sender.username}`, {
-              body: newMessage.content,
+              body: bodyText,
               icon: '/logo.png'
             });
           }
+
 
           if (!isInActiveChat) {
             const chatId = newMessage.channelId || newMessage.groupId || newMessage.senderId;
