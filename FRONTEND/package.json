@@ -2,6 +2,7 @@
   "name": "chat-desk-frontend",
   "private": true,
   "version": "1.0.0",
+  "homepage": ".",
   "type": "module",
   "main": "electron/main/index.cjs",
   "scripts": {
@@ -17,7 +18,7 @@
     "autoprefixer": "^10.4.0",
     "concurrently": "^8.2.0",
     "electron": "^28.0.0",
-    "electron-builder": "^24.9.0",
+    "electron-builder": "^26.8.1",
     "electron-is-dev": "^2.0.0",
     "postcss": "^8.4.0",
     "tailwindcss": "^3.4.0",
@@ -26,6 +27,7 @@
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.0.0",
+    "app-builder-bin": "^4.2.0",
     "date-fns": "^3.0.0",
     "graphql": "^16.8.0",
     "graphql-request": "^6.1.0",

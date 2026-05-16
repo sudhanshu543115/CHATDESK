@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+
 import { Search, Plus, MessageSquare, Users, Filter, CheckCircle2, Loader2, X, Check } from 'lucide-react';
 import Input from '@components/common/Input';
 import Avatar from '@components/common/Avatar';
@@ -23,6 +24,15 @@ const ChatListPanel = () => {
   
   const { user: currentUser } = useSelector((state) => state.auth);
   const { activeChat } = useSelector((state) => state.chat);
+  const location = useLocation();
+
+  // Sync tab with route
+  React.useEffect(() => {
+    if (location.pathname.includes('groups')) setActiveTab('groups');
+    else if (location.pathname.includes('tasks')) setActiveTab('tasks');
+    else if (location.pathname.includes('chat')) setActiveTab('chats');
+  }, [location.pathname]);
+
 
   const { data: usersData, isLoading: usersLoading } = useGetUsersQuery();
   const { data: groupsData, isLoading: groupsLoading } = useGetGroupsQuery(1); 
@@ -30,15 +40,16 @@ const ChatListPanel = () => {
   const [createGroup, { isLoading: isCreating }] = useCreateGroupMutation();
 
   const tabs = [
-    { id: 'chats', icon: MessageSquare, label: 'Chats', path: '/chat' },
-    { id: 'groups', icon: Users, label: 'Groups', path: '/chat' },
-    { id: 'tasks', icon: CheckCircle2, label: 'Tasks', path: '/tasks' },
+    { id: 'chats', icon: MessageSquare, label: 'Chats', path: 'dashboard/chat' },
+    { id: 'groups', icon: Users, label: 'Groups', path: 'dashboard/groups' },
+    { id: 'tasks', icon: CheckCircle2, label: 'Tasks', path: 'dashboard/tasks' },
   ];
 
   const handleTabClick = (tab) => {
     setActiveTab(tab.id);
-    navigate(tab.path);
+    navigate(tab.path, { replace: true });
   };
+
 
   const toggleMember = (userId) => {
     if (selectedMembers.includes(userId)) {

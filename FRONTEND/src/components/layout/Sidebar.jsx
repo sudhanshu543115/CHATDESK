@@ -1,6 +1,8 @@
 import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { toggleSidebar, setActiveView } from '@store/slices/uiSlice';
+import { useNavigate } from 'react-router-dom';
+
 import {
   MessageSquare,
   Users,
@@ -18,18 +20,20 @@ import { logout } from '@store/slices/authSlice';
 
 const Sidebar = ({ collapsed }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
   const { currentWorkspace } = useSelector((state) => state.workspace);
   const { unreadCount } = useSelector((state) => state.notification);
   const { activeView } = useSelector((state) => state.ui);
 
   const menuItems = [
-    { icon: MessageSquare, label: 'Chats', id: 'chats' },
+    { icon: MessageSquare, label: 'Chats', id: 'chat' },
     { icon: Users, label: 'Groups', id: 'groups' },
     { icon: Hash, label: 'Channels', id: 'channels' },
     { icon: CheckCircle2, label: 'Tasks', id: 'tasks' },
     { icon: FileText, label: 'Reports', id: 'reports' },
   ];
+
 
   return (
     <div
@@ -79,7 +83,10 @@ const Sidebar = ({ collapsed }) => {
           {menuItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => dispatch(setActiveView(item.id))}
+              onClick={() => {
+                dispatch(setActiveView(item.id));
+                navigate(`dashboard/${item.id}`);
+              }}
               className={`
                 w-full flex items-center gap-4 px-4 py-3 rounded-xl
                 transition-all duration-300 group relative
@@ -144,7 +151,10 @@ const Sidebar = ({ collapsed }) => {
               transition-all group
               ${collapsed ? 'justify-center' : ''}
             `}
-            onClick={() => dispatch(logout())}
+            onClick={() => {
+              dispatch(logout());
+              navigate('/');
+            }}
           >
             <LogOut className="h-5 w-5 flex-shrink-0 group-hover:-translate-x-1 transition-transform" />
             {!collapsed && <span className="font-semibold">Logout</span>}

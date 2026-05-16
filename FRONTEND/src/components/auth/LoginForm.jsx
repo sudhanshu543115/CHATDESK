@@ -37,7 +37,9 @@ const LoginForm = () => {
       if (response.data?.login) {
         const { token, username, id } = response.data.login;
         dispatch(setCredentials({ user: { username, id }, token }));
-        navigate('/chat');
+        navigate('dashboard/chat', { replace: true });
+
+
       } else if (response.errors) {
         setError(response.errors[0].message);
       }
