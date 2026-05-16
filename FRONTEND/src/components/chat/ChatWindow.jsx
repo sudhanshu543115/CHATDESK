@@ -67,11 +67,36 @@ const ChatWindow = () => {
     pollingInterval: 2000, 
   });
 
+  const [pendingMessages, setPendingMessages] = useState([]);
   const messages = messagesData?.data?.messages || [];
+
+  // Cleanup stale pending messages after 10 seconds (safety)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = Date.now();
+      setPendingMessages(prev => prev.filter(pm => (now - pm.timestampMs) < 10000));
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Merge live messages with optimistic pending messages using Smart Match
+  const allMessages = [
+    ...messages,
+    ...pendingMessages.filter(pm => {
+      // Don't show preview if the real message already arrived (match by fileName or exact content)
+      const isAlreadyInList = messages.some(m => 
+        (pm.fileName && m.fileName === pm.fileName) || 
+        (pm.content && m.content === pm.content && String(m.senderId) === String(pm.senderId))
+      );
+      return !isAlreadyInList;
+    })
+  ];
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-  }, [messages.length]);
+  }, [allMessages.length]);
+
+
 
   const handleAddMember = async (userId) => {
     try {
@@ -180,7 +205,7 @@ const ChatWindow = () => {
             <Loader2 className="h-8 w-8 text-primary-600 animate-spin mb-4" />
             <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest text-center">Syncing messages...</p>
           </div>
-        ) : messages.length === 0 ? (
+        ) : allMessages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full opacity-40 animate-fade-in">
              <div className="p-4 bg-slate-100 dark:bg-slate-900 rounded-2xl mb-4">
                 <MessageIcon className="h-8 w-8 text-slate-400" />
@@ -189,13 +214,18 @@ const ChatWindow = () => {
           </div>
         ) : (
           <>
-            <MessageList messages={messages} currentUserId={currentUser?.id} />
+            <MessageList messages={allMessages} currentUserId={currentUser?.id} />
             <div ref={messagesEndRef} />
           </>
         )}
       </div>
 
-      <MessageInput activeChat={activeChat} currentUser={currentUser} />
+      <MessageInput 
+        activeChat={activeChat} 
+        currentUser={currentUser} 
+        onPendingMessage={(msg) => setPendingMessages(prev => [...prev, msg])}
+        onMessageSent={(tempId) => setPendingMessages(prev => prev.filter(m => m.id !== tempId))}
+      />
 
       {/* Group Settings Modal */}
       {showSettings && isGroup && (

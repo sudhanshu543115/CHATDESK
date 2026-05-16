@@ -9,9 +9,15 @@ import asyncio
 import os
 import uuid
 import shutil
+from dotenv import load_dotenv
+
+# Load environment variables early
+load_dotenv()
+
 from app.config.db import engine, Base
 import app.models.chat_models
 import app.models.user_model
+
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -69,7 +75,7 @@ class ConnectionManager:
                     await websocket.send_text(data)
                 except Exception:
                     dead_connections.append((user_id, websocket))
-        for user_id, websocket in dead_connections:
+        for user_id, websocket in dead_connections: 
             self.disconnect(websocket, user_id)
 
 manager = ConnectionManager()

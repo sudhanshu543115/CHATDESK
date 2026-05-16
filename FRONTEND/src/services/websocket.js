@@ -29,7 +29,24 @@ export const initWebSocket = (userId) => {
     socket = null;
   }
 
-  const wsUrl = `ws://127.0.0.1:8001/ws/${userId}`;
+  // Auto-detect WebSocket URL based on environment
+  let wsBaseUrl = import.meta.env.VITE_WS_BASE_URL || `ws://127.0.0.1:8001`;
+
+  
+  // If we're on production (Vercel) but the env is still pointing to localhost, auto-correct it
+  if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    try {
+      // Use the API URL as a base for the WebSocket URL
+      const apiHost = new URL(import.meta.env.VITE_API_BASE_URL || window.location.origin).host;
+      wsBaseUrl = `${protocol}//${apiHost}`;
+    } catch (e) {
+      wsBaseUrl = `${protocol}//${window.location.hostname}`;
+    }
+  }
+
+  const wsUrl = `${wsBaseUrl}/ws/${userId}`;
+
   console.log(`📡 Connecting to real-time server...`);
   
   socket = new WebSocket(wsUrl);
@@ -106,7 +123,31 @@ export const initWebSocket = (userId) => {
         } else {
           console.log('🔇 Sound suppressed (Message is from yourself)');
         }
+      } else if (message.type === 'REACTION_UPDATE') {
+        const { messageId, reactions } = message.data;
+        const state = store.getState();
+        const activeChat = state.chat.activeChat;
+
+        if (activeChat) {
+          const arg = { 
+            channelId: activeChat.workspaceId && !activeChat.username ? parseInt(activeChat.id) : null,
+            recipientId: activeChat.username ? parseInt(activeChat.id) : null,
+            groupId: activeChat.memberCount !== undefined ? parseInt(activeChat.id) : null
+          };
+
+          store.dispatch(
+            chatApi.util.updateQueryData('getMessages', arg, (draft) => {
+              if (draft?.data?.messages) {
+                const msg = draft.data.messages.find(m => m.id === messageId);
+                if (msg) {
+                  msg.reactions = reactions;
+                }
+              }
+            })
+          );
+        }
       } else if (['TASK_CREATED', 'TASK_UPDATED', 'TASK_DELETED'].includes(message.type)) {
+
         console.log(`📋 Mission Update Received: ${message.type}`);
         // Invalidate the Task tag to trigger a re-fetch of the board
         store.dispatch(chatApi.util.invalidateTags(['Task']));

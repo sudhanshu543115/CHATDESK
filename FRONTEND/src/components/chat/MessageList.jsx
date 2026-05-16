@@ -27,7 +27,9 @@ const MessageList = ({ messages, currentUserId }) => {
             <MessageItem
               message={message}
               isOwn={isOwn}
+              isSending={message.isSending}
             />
+
           </div>
         );
       })}

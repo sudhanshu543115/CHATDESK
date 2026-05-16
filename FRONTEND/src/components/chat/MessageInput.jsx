@@ -11,7 +11,7 @@ const getFileIcon = (type) => {
   return <File className="h-3.5 w-3.5 text-slate-400" />;
 };
 
-const MessageInput = ({ activeChat, currentUser }) => {
+const MessageInput = ({ activeChat, currentUser, onPendingMessage, onMessageSent }) => {
   const [message, setMessage] = useState('');
   const [attachments, setAttachments] = useState([]); // [{file, preview, mediaType}]
   const [uploading, setUploading] = useState(false);
@@ -73,14 +73,36 @@ const MessageInput = ({ activeChat, currentUser }) => {
         channelId: activeChat?.workspaceId && !activeChat.username ? parseInt(activeChat.id) : null,
         recipientId: activeChat?.username ? parseInt(activeChat.id) : null,
         groupId: activeChat?.memberCount !== undefined ? parseInt(activeChat.id) : null,
+        sender: { id: currentUser.id, username: currentUser.username, avatar: currentUser.avatar }
       };
 
       if (currentAttachments.length > 0) {
         setUploading(true);
-        // Upload each file and send a message for it
+        
+        // Process each attachment
         for (const attachment of currentAttachments) {
+          const tempId = `temp-${Date.now()}-${Math.random()}`;
+          
+          // 1. Create Optimistic (Pending) Message
+          if (onPendingMessage) {
+            onPendingMessage({
+              ...baseData,
+              id: tempId,
+              content: content || '',
+              timestamp: new Date().toISOString(),
+              timestampMs: Date.now(),
+              mediaUrl: attachment.preview || '',
+              mediaType: attachment.mediaType,
+              fileName: attachment.name,
+              isSending: true
+            });
+          }
+
+          // 2. Actually Upload
           const uploadResult = await uploadFile(attachment);
+          
           if (uploadResult.url) {
+            // 3. Send Real Message
             await sendMessage({
               ...baseData,
               content: content || attachment.name,
@@ -89,11 +111,37 @@ const MessageInput = ({ activeChat, currentUser }) => {
               fileName: uploadResult.file_name,
             }).unwrap();
           }
+
+          // 4. Remove Optimistic Message with delay
+          setTimeout(() => {
+            if (onMessageSent) onMessageSent(tempId);
+          }, 500);
         }
         setUploading(false);
       } else {
+        const tempId = `temp-${Date.now()}-${Math.random()}`;
+        
+        // 1. Optimistic Text Message
+        if (onPendingMessage) {
+          onPendingMessage({
+            ...baseData,
+            id: tempId,
+            content: content,
+            timestamp: new Date().toISOString(),
+            timestampMs: Date.now(),
+            isSending: true
+          });
+        }
+
+        // 2. Send Real
         await sendMessage({ ...baseData, content }).unwrap();
+
+        // 3. Cleanup
+        setTimeout(() => {
+          if (onMessageSent) onMessageSent(tempId);
+        }, 500);
       }
+
     } catch (err) {
       console.error('Failed to send:', err);
       setUploading(false);
@@ -101,6 +149,7 @@ const MessageInput = ({ activeChat, currentUser }) => {
       setAttachments(currentAttachments);
     }
   };
+
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {

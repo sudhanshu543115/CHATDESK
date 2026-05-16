@@ -10,6 +10,8 @@ from app.models.user_model import User as UserModel
 from app.models.chat_models import Workspace as WorkspaceModel, Channel as ChannelModel, Message as MessageModel, Group as GroupModel, Task as TaskModel
 from sqlalchemy.exc import OperationalError, IntegrityError
 from sqlalchemy import or_, and_
+from app.models.chat_models import Reaction as ReactionModel
+
 
 @strawberry.type
 class User:
@@ -17,6 +19,25 @@ class User:
     username: str
     email: str
     avatar: Optional[str] = None
+
+@strawberry.type
+class Reaction:
+    id: int
+    emoji: str
+    userId: int
+    messageId: int
+    
+    @strawberry.field
+    def user(self) -> Optional[User]:
+        db = SessionLocal()
+        try:
+            user_obj = db.query(UserModel).filter(UserModel.id == self.userId).first()
+            if user_obj:
+                return User(id=user_obj.id, username=user_obj.username, email=user_obj.email)
+            return None
+        finally:
+            db.close()
+
 
 @strawberry.type
 class Task:
@@ -65,6 +86,19 @@ class Message:
     mediaUrl: Optional[str] = None
     mediaType: Optional[str] = None
     fileName: Optional[str] = None
+
+    @strawberry.field
+    def reactions(self) -> List[Reaction]:
+        db = SessionLocal()
+        try:
+            reactions = db.query(ReactionModel).filter(ReactionModel.message_id == self.id).all()
+            return [
+                Reaction(id=r.id, emoji=r.emoji, userId=r.user_id, messageId=r.message_id)
+                for r in reactions
+            ]
+        finally:
+            db.close()
+
 
     @strawberry.field
     def sender(self) -> Optional[User]:
@@ -218,8 +252,12 @@ class Query:
                     senderId=m.sender_id,
                     channelId=m.channel_id,
                     groupId=m.group_id,
-                    recipientId=m.recipient_id
+                    recipientId=m.recipient_id,
+                    mediaUrl=m.media_url,
+                    mediaType=m.media_type,
+                    fileName=m.file_name
                 ) for m in messages
+
             ]
         finally:
             db.close()
@@ -461,4 +499,49 @@ class Mutation:
         finally:
             db.close()
 
+    @strawberry.mutation
+    async def toggle_reaction(self, info: Info, messageId: int, userId: int, emoji: str) -> List[Reaction]:
+        db = SessionLocal()
+        try:
+            existing = db.query(ReactionModel).filter(
+                ReactionModel.message_id == messageId,
+                ReactionModel.user_id == userId,
+                ReactionModel.emoji == emoji
+            ).first()
+            
+            if existing:
+                db.delete(existing)
+            else:
+                new_reaction = ReactionModel(message_id=messageId, user_id=userId, emoji=emoji)
+                db.add(new_reaction)
+            
+            db.commit()
+            
+            # Fetch updated reactions
+            reactions = db.query(ReactionModel).filter(ReactionModel.message_id == messageId).all()
+            result = [
+                Reaction(id=r.id, emoji=r.emoji, userId=r.user_id, messageId=r.message_id)
+                for r in reactions
+            ]
+            
+            # Broadcast update
+            manager = info.context.get("manager")
+            if manager:
+                payload = {
+                    "type": "REACTION_UPDATE",
+                    "data": {
+                        "messageId": messageId,
+                        "reactions": [
+                            {"id": r.id, "emoji": r.emoji, "userId": r.user_id, "messageId": r.message_id}
+                            for r in reactions
+                        ]
+                    }
+                }
+                asyncio.create_task(manager.broadcast(payload))
+                
+            return result
+        finally:
+            db.close()
+
 schema = strawberry.Schema(query=Query, mutation=Mutation)
+

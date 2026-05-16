@@ -73,3 +73,15 @@ class Message(Base):
     media_type = Column(String, nullable=True)
     file_name = Column(String, nullable=True)
 
+    reactions = relationship("Reaction", back_populates="message", cascade="all, delete-orphan")
+
+class Reaction(Base):
+    __tablename__ = "reactions"
+    id = Column(Integer, primary_key=True)
+    emoji = Column(String)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    message_id = Column(Integer, ForeignKey("messages.id"))
+    
+    message = relationship("Message", back_populates="reactions")
+    user = relationship("User")
+

@@ -290,8 +290,14 @@ export const chatApi = createApi({
                   username
                   avatar
                 }
+                reactions {
+                  id
+                  emoji
+                  userId
+                }
               }
             }
+
           `,
           variables: { channelId, recipientId, groupId },
         },
@@ -334,8 +340,28 @@ export const chatApi = createApi({
       }),
       invalidatesTags: ['Message'],
     }),
+    toggleReaction: builder.mutation({
+      query: ({ messageId, userId, emoji }) => ({
+        url: '',
+        method: 'POST',
+        body: {
+          query: `
+            mutation ToggleReaction($messageId: Int!, $userId: Int!, $emoji: String!) {
+              toggleReaction(messageId: $messageId, userId: $userId, emoji: $emoji) {
+                id
+                emoji
+                userId
+                messageId
+              }
+            }
+          `,
+          variables: { messageId, userId, emoji },
+        },
+      }),
+    }),
   }),
 });
+
 
 export const {
   useLoginMutation,
@@ -354,4 +380,6 @@ export const {
   useGetMessagesQuery,
   useSendMessageMutation,
   useDeleteMessageMutation,
+  useToggleReactionMutation,
 } = chatApi;
+
